@@ -8,11 +8,12 @@ class Item:
         self.color = color if color else None
         self.price = price
         self.item_id = item_id
+        self.placed = False
         self.pic = ''
         self.name = name + f' ({self.color})' if item_type == 'cell' else name
 
     def __str__(self):
-        return f'[{str(self.item_id)}] {self.name}'
+        return f'[{str(self.item_id)}] {self.name} ({self.placed})'
 
     def __lt__(self, other):
         return self.price < other.price
