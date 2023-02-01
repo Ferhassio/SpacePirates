@@ -13,6 +13,7 @@ class Game:
         self.game_pool = self.ItemPoolGenerator.build_pool()
 
         self.players = players
+        self.total_players = len(players)
         self.current_turn = 0
 
         self.pirate_draw = []
@@ -25,10 +26,32 @@ class Game:
         print('Game data loaded. Total items:', len(self.game_pool))
 
     def _check_robot_draw(self):
+        if len(self.robot_draw) != 0:
+            total_robots = 0
+            for item in self.robot_draw:
+                if item.type == 'robot':
+                    total_robots += 1
+                    if total_robots == self.total_players:
+                        self.game_pool.extend(self.robot_draw)
+                        self.robot_draw.clear()
+                        print(f'WOW players meet {self.total_players} ROBOTS! '
+                              f'Pool shuffled. New len: {len(self.game_pool)}')
 
+    def _check_pirate_draw(self):
+        if len(self.pirate_draw) != 0:
+            total_pirates = 0
+            for item in self.pirate_draw:
+                if item.type == 'pirate':
+                    total_pirates += 1
+                    if total_pirates == self.total_players + 4:
+                        self.game_pool += self.pirate_draw
+                        self.pirate_draw.clear()
+                        print(
+                            f'WOW players deal with {self.total_players+4} PIRATES! '
+                            f'Pool shuffled. New len: {len(self.game_pool)}')
 
-    def shuffle_pool(self):
-        self.game_pool.extend(self.pirate_draw + self.robot_draw)
+    # def shuffle_pool(self):
+    #     self.game_pool.extend(self.pirate_draw + self.robot_draw)
 
     def set_order(self):
         shuffle(self.players)
@@ -46,22 +69,51 @@ class Game:
 
             return item
 
+    @staticmethod
+    def _consume_cell(player: Player, cell_color) -> Item:
+        cell = None
+        for item in player.items:
+            if item.type == 'cell':
+                print('ITEM:', item.name)
+                if item.color == cell_color:
+                    if not item.placed:
+                        print(f'{item.name} used by {player.name}.')
+                        item.placed = True
+                        cell = item
+
+        return cell
+
+    @staticmethod
+    def _remove_cell(player: Player, cell_color):
+        cell = None
+        for item in player.items:
+            if item.type == 'cell':
+                print('ITEM:', item.name)
+                if item.color == cell_color:
+                    print(f'{item.name} REMOVED from {player.name} stash.')
+                    item.placed = True
+                    cell = item
+
+        return cell
+
     def turn(self, player: Player):
         item = self._draw_card(player)
 
         if item:
             if item.type == 'robot':
+                self.robot_draw.append(item)
                 player.is_turned = True
                 player.turn_no += 1
 
                 if player.current_cell_color:
-                    self._remove_cell(player, player.current_cell_color)
                     player.energy_cells -= 1
-
+                    self.robot_draw.append(item)
+                    removed_cell = self._remove_cell(player, player.current_cell_color)
+                    self.robot_draw.append(removed_cell)
+                    # print('----------removed----', removed_cell, player.current_cell_color)
                     if player.energy_cells == 0:
                         player.current_cell_color = None
                         print(f'Oooops, {player.name} got ROBOT booom. Now he can charge any color.')
-
                     else:
                         print(f'Oooops, {player.name} got ROBOT booom.')
 
@@ -72,11 +124,15 @@ class Game:
                     print(f'Ahahaha {player.name} died from {item.name}!!! God bye.')
                     self._kill_player(player)
 
+                self._check_robot_draw()
+
             elif item.type == 'pirate':
                 print(f'Oooops, {player.name} got PIRATE booom')
+                self.pirate_draw.append(item)
                 self.deal_with_pirate(player)
                 player.is_turned = True
                 player.turn_no += 1
+                self._check_pirate_draw()
 
             elif item.type == 'cell':
                 player.add_item(item)
@@ -110,10 +166,9 @@ class Game:
         print(f'{player.name} lost {len(draw)} credits. So sad....')
         return draw
 
-
     def deal_with_pirate(self, player: Player):
         if player.credits >= 3:
-            self.pirate_draw.append(self._remove_credits(player, 3))
+            self.pirate_draw.extend(self._remove_credits(player, 3))
 
         elif player.credits < 3:
             draw = self._remove_credits(player, player.credits)
@@ -121,14 +176,21 @@ class Game:
                 pass
             # if len(player.items) >=3:
 
-    @staticmethod
-    def _remove_cell(player: Player, color):
-        for item in player.items:
-            if item.type == 'cell':
-                if item.color == color:
-                    player.items.remove(item)
-                    print(f'{item.name} Removed from {player.name} stash.')
-                    break
+    # def _place_cell(self, player: Player, color):
+    #     removed = None
+    #     print('ITEMS:', ' '.join([str(item) for item in player.items]))
+    #     print(player.current_cell_color)
+    #     if len(player.items) != 0:
+    #         for item in player.items:
+    #             if item.type == 'cell':
+    #                 if not item.placed:
+    #                     if item.color == color:
+    #                         item.placed = True
+    #                         removed = item
+    #                         print(f'{item.name} used by {player.name}.')
+    #                         break
+    #
+    #     return removed
 
     def check_charged_colors(self):
         cell_colors = set()
@@ -152,24 +214,23 @@ class Game:
             player.is_protected = False
 
     def charge_cell(self, player: Player, color):
-
         if self._is_free_color(color):
             if player.current_cell_color:
                 if player.current_cell_color == color:
                     player.energy_cells += 1
                     print(f'!!! {player.name} charged one block of '
                           f'{color} color! Now {player.energy_cells}!')
-                    self._remove_cell(player, color)
+                    used = self._consume_cell(player, color)
                     self.break_shield()
-                    print(f'{player.name} SHIELD DESTROYED!!!! {player.name} charged {color} color')
+                    print(f'{player.name} SHIELD DESTROYED!!!! {player.name} charged {color} color using {used.name}')
 
                     if player.energy_cells == 6:
                         self._is_win(player)
             else:
                 player.current_cell_color = color
                 player.energy_cells += 1
-                self._remove_cell(player, color)
-                print(f'!!! First charge for {player.name} charged one block of '
+                used = self._consume_cell(player, color)
+                print(f'!!! First charge for {player.name} charged of '
                       f'{color} color! Now {player.energy_cells}!')
 
                 self.break_shield()
