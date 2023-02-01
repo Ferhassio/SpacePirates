@@ -7,18 +7,22 @@ from random import shuffle
 
 
 class Game:
-    def __init__(self, players: list[Player]):
-        self.default_items = [('credit', 50), ('robot', 20), ('pirate', 30)]
-        self.ItemPoolGenerator = ItemPoolMaster(len(players), self.default_items)
+    def __init__(self, players_list: list[Player]):
+        self.default_items = [('credit', 50), ('robot', 10), ('pirate', 20)]
+
+        self.ItemPoolGenerator = ItemPoolMaster(len(players_list), self.default_items)
         self.game_pool = self.ItemPoolGenerator.build_pool()
 
-        self.players = players
-        self.total_players = len(players)
+        self.players = players_list
+        self.total_players = len(players_list)
         self.current_turn = 0
 
         self.pirate_draw = []
         self.robot_draw = []
         self.colors_in_game = {}
+
+        self.pirate_meet = 0
+        self.robot_meet = 0
 
         self.game_state = None
 
@@ -26,32 +30,47 @@ class Game:
         print('Game data loaded. Total items:', len(self.game_pool))
 
     def _check_robot_draw(self):
-        if len(self.robot_draw) != 0:
-            total_robots = 0
-            for item in self.robot_draw:
-                if item.type == 'robot':
-                    total_robots += 1
-                    if total_robots == self.total_players:
-                        self.game_pool.extend(self.robot_draw)
-                        self.robot_draw.clear()
-                        print(f'WOW players meet {self.total_players} ROBOTS! '
-                              f'Pool shuffled. New len: {len(self.game_pool)}')
+        if self.robot_meet == self.total_players:
+            self.robot_meet = 0
+            self.game_pool.extend(self.robot_draw)
+            self.robot_draw.clear()
+            print(f'WOW players meet {self.total_players} ROBOTS! '
+                  f'Pool shuffled. New len: {len(self.game_pool)}')
+            random.shuffle(self.game_pool)
+
+        # if len(self.robot_draw) != 0:
+        #     total_robots = 0
+        #     for item in self.robot_draw:
+        #         if item.type == 'robot':
+        #             total_robots += 1
+        #             if total_robots == self.total_players:
+        #                 self.game_pool.extend(self.robot_draw)
+        #                 self.robot_draw.clear()
+        #                 print(f'WOW players meet {self.total_players} ROBOTS! '
+        #                       f'Pool shuffled. New len: {len(self.game_pool)}')
+        #                 random.shuffle(self.game_pool)
 
     def _check_pirate_draw(self):
-        if len(self.pirate_draw) != 0:
-            total_pirates = 0
-            for item in self.pirate_draw:
-                if item.type == 'pirate':
-                    total_pirates += 1
-                    if total_pirates == self.total_players + 4:
-                        self.game_pool += self.pirate_draw
-                        self.pirate_draw.clear()
-                        print(
-                            f'WOW players deal with {self.total_players+4} PIRATES! '
-                            f'Pool shuffled. New len: {len(self.game_pool)}')
+        if self.pirate_meet == self.total_players + 4:
+            self.pirate_meet = 0
+            self.game_pool.extend(self.pirate_draw)
+            self.pirate_draw.clear()
+            print(f'WOW players deal with {self.total_players + 4} PIRATES! '
+                  f'Pool shuffled. New len: {len(self.game_pool)}')
 
-    # def shuffle_pool(self):
-    #     self.game_pool.extend(self.pirate_draw + self.robot_draw)
+            random.shuffle(self.game_pool)
+        # if len(self.pirate_draw) != 0:
+        #     total_pirates = 0
+        #     for item in self.pirate_draw:
+        #         if item.type == 'pirate':
+        #             total_pirates += 1
+        #             if total_pirates == self.total_players + 4:
+        #                 self.game_pool.extend(self.pirate_draw)
+        #                 self.pirate_draw.clear()
+        #                 print(
+        #                     f'WOW players deal with {self.total_players+4} PIRATES! '
+        #                     f'Pool shuffled. New len: {len(self.game_pool)}')
+        #                 random.shuffle(self.game_pool)
 
     def set_order(self):
         shuffle(self.players)
@@ -74,7 +93,7 @@ class Game:
         cell = None
         for item in player.items:
             if item.type == 'cell':
-                print('ITEM:', item.name)
+                # print('ITEM:', item.name)
                 if item.color == cell_color:
                     if not item.placed:
                         print(f'{item.name} used by {player.name}.')
@@ -88,17 +107,17 @@ class Game:
         cell = None
         for item in player.items:
             if item.type == 'cell':
-                print('ITEM:', item.name)
+                # print('ITEM:', item.name)
                 if item.color == cell_color:
                     print(f'{item.name} REMOVED from {player.name} stash.')
                     item.placed = True
                     cell = item
+                    break
 
         return cell
 
     def turn(self, player: Player):
         item = self._draw_card(player)
-
         if item:
             if item.type == 'robot':
                 self.robot_draw.append(item)
@@ -107,31 +126,40 @@ class Game:
 
                 if player.current_cell_color:
                     player.energy_cells -= 1
-                    self.robot_draw.append(item)
                     removed_cell = self._remove_cell(player, player.current_cell_color)
                     self.robot_draw.append(removed_cell)
                     # print('----------removed----', removed_cell, player.current_cell_color)
                     if player.energy_cells == 0:
                         player.current_cell_color = None
-                        print(f'Oooops, {player.name} got ROBOT booom. Now he can charge any color.')
+                        print(f'Oooops, {player.name} got ROBOT booom. Now he can charge any color. '
+                              f'Draw {len(self.robot_draw)}')
+                        print(' '.join([str(itm) for itm in self.robot_draw]))
+
                     else:
-                        print(f'Oooops, {player.name} got ROBOT booom.')
+                        print(f'Oooops, {player.name} got ROBOT booom. '
+                              f'Draw {len(self.robot_draw)}')
+                        print(' '.join([str(itm) for itm in self.robot_draw]))
 
                 elif player.is_protected:
                     print(f'Wow!!! shield saved {player.name} from {item.name}!!!')
 
                 else:
-                    print(f'Ahahaha {player.name} died from {item.name}!!! God bye.')
+                    print(f'Ahahaha {player.name} died from {item.name}!!! God bye. Draw {len(self.robot_draw)}')
+                    print(' '.join([str(itm) for itm in self.robot_draw]))
+
                     self._kill_player(player)
 
+                self.robot_meet += 1
                 self._check_robot_draw()
 
             elif item.type == 'pirate':
-                print(f'Oooops, {player.name} got PIRATE booom')
+                print(f'Oooops, {player.name} got PIRATE booom. Draw {len(self.pirate_draw)}')
                 self.pirate_draw.append(item)
                 self.deal_with_pirate(player)
                 player.is_turned = True
                 player.turn_no += 1
+
+                self.pirate_meet += 1
                 self._check_pirate_draw()
 
             elif item.type == 'cell':
@@ -167,6 +195,7 @@ class Game:
         return draw
 
     def deal_with_pirate(self, player: Player):
+        # TODO: Add some logic
         if player.credits >= 3:
             self.pirate_draw.extend(self._remove_credits(player, 3))
 
@@ -176,21 +205,12 @@ class Game:
                 pass
             # if len(player.items) >=3:
 
-    # def _place_cell(self, player: Player, color):
-    #     removed = None
-    #     print('ITEMS:', ' '.join([str(item) for item in player.items]))
-    #     print(player.current_cell_color)
-    #     if len(player.items) != 0:
-    #         for item in player.items:
-    #             if item.type == 'cell':
-    #                 if not item.placed:
-    #                     if item.color == color:
-    #                         item.placed = True
-    #                         removed = item
-    #                         print(f'{item.name} used by {player.name}.')
-    #                         break
-    #
-    #     return removed
+    def _reset_item_state(self):
+        for item in self.robot_draw:
+            item.placed = False
+
+        for item in self.pirate_draw:
+            item.placed = False
 
     def check_charged_colors(self):
         cell_colors = set()
@@ -207,6 +227,7 @@ class Game:
                 break
             else:
                 free_color = True
+
         return free_color
 
     def break_shield(self):
@@ -220,16 +241,16 @@ class Game:
                     player.energy_cells += 1
                     print(f'!!! {player.name} charged one block of '
                           f'{color} color! Now {player.energy_cells}!')
-                    used = self._consume_cell(player, color)
+                    self._consume_cell(player, color)
                     self.break_shield()
-                    print(f'{player.name} SHIELD DESTROYED!!!! {player.name} charged {color} color using {used.name}')
+                    print(f'{player.name} SHIELD DESTROYED!!!! {player.name} charged {color} color.')
 
                     if player.energy_cells == 6:
                         self._is_win(player)
             else:
                 player.current_cell_color = color
                 player.energy_cells += 1
-                used = self._consume_cell(player, color)
+                self._consume_cell(player, color)
                 print(f'!!! First charge for {player.name} charged of '
                       f'{color} color! Now {player.energy_cells}!')
 
@@ -323,7 +344,12 @@ class Game:
 
     # Test function
     def play_round(self):
-        print('\n'.join([str(player) for player in self.players]), '\n')
+        print('\n\n'.join([str(player) for player in self.players]), '\n')
+        self._reset_item_state()
+
+        print('Robot draw', len(self.robot_draw))
+        print('Pirate draw', len(self.pirate_draw))
+
         for player in self.players:
             player.is_turned = False
             player.turn_no = 1
@@ -340,7 +366,7 @@ class Game:
                     break
 
             else:
-                print('\n\n'.join([str(player) for player in self.players]))
+                # print('\n\n'.join([str(player) for player in self.players]))
                 exit('Game ended')
 
         self.current_turn += 1
@@ -353,6 +379,6 @@ if __name__ == '__main__':
                Player('Politol', 4)]
 
     new_game = Game(players)
-    for i in range(8):
+    for i in range(1000):
         print('\n\nRound ', i)
         new_game.play_round()
