@@ -2,6 +2,9 @@ import random
 
 
 class Item:
+    """
+    Class for any item in game.
+    """
     def __init__(self, name, price, item_type, color, item_id, desc=None):
         self.description = desc
         self.type = item_type
@@ -20,6 +23,9 @@ class Item:
 
 
 class ItemPoolMaster:
+    """
+    Class for managing game pool and generating items.
+    """
     def __init__(self, players, item_map: list):
         """
         Item generator class for game.
@@ -66,7 +72,11 @@ class ItemPoolMaster:
 
         return item_pool
 
-    def build_pool(self):
+    def build_pool(self) -> list[Item]:
+        """
+        Build game pool
+        :return: List of Items objects
+        """
         full_item_pool = self._generate_cells() + self._generate_items()
         random.shuffle(full_item_pool)
 
