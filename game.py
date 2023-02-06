@@ -1,20 +1,18 @@
 import random
-from operator import itemgetter
-
 from components import Item, ItemPoolMaster
 from player import Player
 from random import shuffle
 
 
 class Game:
-    def __init__(self, players_list: list[Player]):
+    def __init__(self):
         self.default_items = [('credit', 50), ('robot', 10), ('pirate', 20)]
 
-        self.ItemPoolGenerator = ItemPoolMaster(len(players_list), self.default_items)
-        self.game_pool = self.ItemPoolGenerator.build_pool()
+        # self.ItemPoolGenerator = ItemPoolMaster(len(players_list), self.default_items)
+        self.game_pool = []
 
-        self.players = players_list
-        self.total_players = len(players_list)
+        self.players = []
+        self.total_players = len(self.players)
         self.current_turn = 0
 
         self.pirate_draw = []
@@ -28,6 +26,22 @@ class Game:
 
         self.set_order()
         print('Game data loaded. Total items:', len(self.game_pool))
+
+    def add_player(self, player: Player) -> Player:
+        """
+        Add new player.
+        :param player: Player obj
+        :return: None
+        """
+        self.players.append(player)
+        self.total_players = len(self.players)
+
+        return player
+
+    def __build_pool__(self):
+        pool_master = ItemPoolMaster(len(self.players), self.default_items)
+        builder = pool_master.build_pool()
+        self.game_pool.extend(builder)
 
     def _check_robot_draw(self):
         if self.robot_meet == self.total_players:
@@ -61,7 +75,7 @@ class Game:
 
         self.players.sort()
 
-    def _draw_card(self, player: Player) -> Item:
+    def draw_card(self, player: Player) -> Item:
         """
         Draw an item from pool
         :param player: Player object
@@ -87,14 +101,14 @@ class Game:
                 # print('ITEM:', item.name)
                 if item.color == cell_color:
                     if not item.placed:
-                        print(f'{item.name} used by {player.name}.')
+                        print(f'{item.name} consumed {player.name}.')
                         item.placed = True
                         cell = item
 
         return cell
 
     @staticmethod
-    def _remove_cell(player: Player, cell_color) -> Item:
+    def _place_cell(player: Player, cell_color) -> Item:
         """
         TODO: Remove this or concat with `_consume_cell`
         """
@@ -118,7 +132,7 @@ class Game:
         """
 
         # Draw a card
-        item = self._draw_card(player)
+        item = self.draw_card(player)
         if item:
             # check various item types
             if item.type == 'robot':
@@ -133,7 +147,7 @@ class Game:
                     player.energy_cells -= 1
 
                     # Remove cell and add to robot draw
-                    removed_cell = self._remove_cell(player, player.current_cell_color)
+                    removed_cell = self._place_cell(player, player.current_cell_color)
                     self.robot_draw.append(removed_cell)
 
                     # Drop player color if run out of cells
@@ -221,6 +235,12 @@ class Game:
         if player.credits >= 3:
             self.pirate_draw.extend(self._remove_credits(player, 3))
 
+        elif 1 <= player.credits <= 2:
+            self.pirate_draw.extend(self._remove_credits(player, player.credits))
+            if player.energy_cells > 1:
+                self.pirate_draw.append(self._consume_cell(player, player.current_cell_color))
+                player.energy_cells -= 1
+
         elif player.credits < 3:
             draw = self._remove_credits(player, player.credits)
             if len(draw) < 3:
@@ -267,6 +287,7 @@ class Game:
         for player in self.players:
             player.is_protected = False
 
+    # TODO: Only one cell is charged
     def charge_cell(self, player: Player, color):
         """
         Charge cell from inventory.
@@ -384,65 +405,65 @@ class Game:
 
         return count_of
 
+    # # Test function
+    # def bot_turn(self, player: Player):
+    #     self.turn(player)
+    #
+    #     # Found cells
+    #     # total_cells = self._count_of_items('cell')
+    #     colors = dict(sorted(self._count_of_colors(player.items).items(), reverse=True, key=itemgetter(1)))
+    #
+    #     free_colors = [color for color in colors if self._is_free_color(color)]
+    #
+    #     if len(free_colors) >= 1:
+    #         targeted_cell = random.choice(free_colors)
+    #     else:
+    #         targeted_cell = None
+    #
+    #     if targeted_cell:
+    #         # if total_cells > 2:
+    #         #     for color in colors:
+    #         #         if colors.get(color) > 1:
+    #         #             # if player.turn_no != 2:
+    #         #             self.charge_cell(player, color)
+    #
+    #         # Check turns
+    #         if self.current_turn >= 2:
+    #             # if total_cells >= 1:
+    #             self.charge_cell(player, targeted_cell)
+    #
+    #         # Check credits for shopping
+    #         if player.credits == 3:
+    #             pass
+
     # Test function
-    def bot_turn(self, player: Player):
-        self.turn(player)
-
-        # Found cells
-        total_cells = self._count_of_items('cell')
-        colors = dict(sorted(self._count_of_colors(player.items).items(), reverse=True, key=itemgetter(1)))
-
-        free_colors = [color for color in colors if self._is_free_color(color)]
-
-        if len(free_colors) >= 1:
-            targeted_cell = random.choice(free_colors)
-        else:
-            targeted_cell = None
-
-        if targeted_cell:
-            # if total_cells > 2:
-            #     for color in colors:
-            #         if colors.get(color) > 1:
-            #             # if player.turn_no != 2:
-            #             self.charge_cell(player, color)
-
-            # Check turns
-            if self.current_turn >= 2:
-                if total_cells >= 1:
-                    self.charge_cell(player, targeted_cell)
-
-            # Check credits for shopping
-            if player.credits == 3:
-                pass
-
-    # Test function
-    def play_round(self):
-        print('\n\n'.join([str(player) for player in self.players]), '\n')
-        self._reset_item_state()
-
-        print('Robot draw', len(self.robot_draw))
-        print('Pirate draw', len(self.pirate_draw))
-
-        for player in self.players:
-            player.is_turned = False
-            player.turn_no = 1
-            if not self.game_state:
-
-                self.bot_turn(player)
-
-                print(player.name, f' ended turn {self.current_turn}')
-                if self.current_turn == 3:
-                    self.break_shield()
-
-                if not self._is_dead():
-                    print('Game ended. All dead.')
-                    break
-
-            else:
-                # print('\n\n'.join([str(player) for player in self.players]))
-                exit('Game ended')
-
-        self.current_turn += 1
+    # def play_round(self):
+    #     print('\n\n'.join([str(player) for player in self.players]), '\n')
+    #     self._reset_item_state()
+    #
+    #     print('Robot draw', len(self.robot_draw))
+    #     print('Pirate draw', len(self.pirate_draw))
+    #
+    #     for player in self.players:
+    #         player.is_turned = False
+    #         player.turn_no = 1
+    #         if not self.game_state:
+    #
+    #             # self.bot_turn(player)
+    #
+    #             print(player.name, f' ended turn {self.current_turn}')
+    #             if self.current_turn == 3:
+    #                 self.break_shield()
+    #
+    #             if not self._is_dead():
+    #                 print('Game ended. All dead.')
+    #                 break
+    #
+    #         else:
+    #             # print('\n\n'.join([str(player) for player in self.players]))
+    #             exit('Game ended')
+    #
+    #     self.current_turn += 1
 
 
 if __name__ == '__main__':
@@ -452,6 +473,6 @@ if __name__ == '__main__':
                Player('Politol', 4)]
 
     new_game = Game(players)
-    for i in range(1000):
+    for i in range(20):
         print('\n\nRound ', i)
         new_game.play_round()
