@@ -39,6 +39,8 @@ class ServerMessage(TextInput):
         super(ServerMessage, self).__init__(**kwargs)
         self.multiline = True
         self.text = 'Server messages'
+        self.size = (200, 100)
+        self.pos = (0, 200)
         Clock.schedule_interval(self.callback, .5)
 
     def callback(self, instance):
@@ -50,11 +52,10 @@ class ServerMessage(TextInput):
 class Background(BoxLayout):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.add_widget(DrawBtn())
-        self.add_widget(BuildBtn())
-        self.add_widget(Buy())
-        self.add_widget(Play())
-        self.add_widget(ServerMessage())
+        self.add_widget(DrawBtn(), index=1)
+        self.add_widget(BuildBtn(), index=1)
+        self.add_widget(Buy(), index=1)
+        self.add_widget(ServerMessage(), index=3)
 
         self.init_pool()
         self.load()
@@ -84,30 +85,12 @@ class Background(BoxLayout):
         for player in players:
             print('Player', player)
             MESSAGE += '\n' + player + ' added.'
-            self.add_widget(Ship(owner=player))
+            self.add_widget(Ship(owner=player), index=3)
 
     def init_pool(self):
         global MESSAGE
         MESSAGE += '\n' + requests.get(f'http://{HOST}:{PORT}/start').text
         print('Pool inited', MESSAGE)
-
-
-# class Sync(Widget):
-#     def __init__(self, **kwargs):
-#         super().__init__(**kwargs)
-#
-#     def sync(self, instance):
-#         global MESSAGE
-#         response = requests.get(f'http://{HOST}:{PORT}/synchronize')
-#         MESSAGE = response.text
-#
-#         print('Resp', response.json())
-#         players = response.json()['players']
-#
-#         for player in players:
-#             print('Player', player)
-#             Ship.text = player
-#             self.add_widget(Ship())
 
 
 class Play(Widget):
@@ -158,7 +141,7 @@ class Ship(Widget):
 class DrawBtn(Widget):
     def __init__(self, **kwargs):
         super(DrawBtn, self).__init__(**kwargs)
-        draw_btn = kb.Button(text='Draw', size=(100, 40), pos=(0, 120))
+        draw_btn = kb.Button(text='Draw', size=(100, 40), pos=(0, 0))
         draw_btn.bind(on_press=self.callback)
         self.add_widget(draw_btn)
         # self.disabled = True
@@ -176,7 +159,7 @@ class DrawBtn(Widget):
 class BuildBtn(Widget):
     def __init__(self, **kwargs):
         super(BuildBtn, self).__init__(**kwargs)
-        build_btn = kb.Button(text='Charge', size=(100, 40), pos=(100, 120))
+        build_btn = kb.Button(text='Charge', size=(100, 40), pos=(100, 0))
         build_btn.bind(on_press=self.callback)
         self.add_widget(build_btn)
         # self.disabled = True
@@ -188,7 +171,7 @@ class BuildBtn(Widget):
 class Buy(Widget):
     def __init__(self, **kwargs):
         super(Buy, self).__init__(**kwargs)
-        btn1 = kb.Button(text='Buy', size=(100, 40), pos=(200, 120))
+        btn1 = kb.Button(text='Buy', size=(100, 40), pos=(200, 0))
         btn1.bind(on_press=self.callback)
         self.add_widget(btn1)
         # self.disabled = True
