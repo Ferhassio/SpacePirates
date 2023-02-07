@@ -11,10 +11,10 @@ class Session:
         :param player_name:
         :return:
         """
-        is_valid = True
+        is_valid = False
         for player in self.players.keys():
             if player.lower() == player_name.lower():
-                is_valid = False
+                is_valid = True
                 break
 
         return is_valid
@@ -25,7 +25,7 @@ class Session:
         :param player_name:
         :return:
         """
-        if self.validate(player_name):
+        if not self.validate(player_name):
             player_index = len(self.players.keys()) + 1
             player = Player(player_name, player_index)
             self.players.update({player_name: player})

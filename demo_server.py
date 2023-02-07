@@ -12,7 +12,7 @@ def login(user_name):
     # user = request.args.get('user', type=str)
     # destination = request.args.get('url', type=str)
     player = session.add(user_name)
-
+    print(player, 'Added in session')
     return str(game.add_player(player))
 
 
@@ -20,8 +20,11 @@ def login(user_name):
 def draw(user_name):
     # user = request.args.get('user', type=str)
     # destination = request.args.get('url', type=str)
+    # print(user_name, session.players.get(user_name))
+    # print('SESSION', session.players)
+    # print(session.validate(user_name))
     if session.validate(user_name):
-        return game.turn(session.get_player(user_name))
+        return str(game.draw_card(session.get_player(user_name)))
     else:
         return f'User {user_name} not in session.'
 

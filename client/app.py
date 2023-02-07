@@ -117,6 +117,8 @@ class DrawBtn(Widget):
         # pop = Popup(title=f'[#{item.item_id}] {item.name}', content=Image(source=VORTEX_PATH),
         #             size_hint=(None, None), size=(200, 300))
         # pop.open()
+        global MESSAGE
+        MESSAGE = player_name + ' got ' + resp.text
         pop = Popup(title=resp.text, content=Image(source=VORTEX_PATH),
                     size_hint=(None, None), size=(200, 300))
         pop.open()
