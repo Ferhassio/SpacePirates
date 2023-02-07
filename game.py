@@ -38,6 +38,11 @@ class Game:
 
         return player
 
+    def search_by_name(self, player_name: str) -> Player:
+        for pl in self.players:
+            if pl.name.lower() == player_name.lower():
+                return pl
+
     def __build_pool__(self):
         pool_master = ItemPoolMaster(len(self.players), self.default_items)
         builder = pool_master.build_pool()

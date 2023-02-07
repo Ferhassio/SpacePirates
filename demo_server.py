@@ -1,6 +1,7 @@
 from flask import Flask
 from session import Session
 from game import Game
+from components import Item
 app = Flask(__name__)
 session = Session()
 game = Game()
@@ -29,11 +30,39 @@ def draw(user_name):
         return f'User {user_name} not in session.'
 
 
+@app.route('/inventory/<user_name>')
+def inventory(user_name):
+    # user = request.args.get('user', type=str)
+    # destination = request.args.get('url', type=str)
+    # print(user_name, session.players.get(user_name))
+    # print('SESSION', session.players)
+    # print(session.validate(user_name))
+    print(session.players)
+    if session.validate(user_name):
+        player = game.search_by_name(user_name)
+        print(str(player))
+        return player.get_inventory()
+    else:
+        return f'User {user_name} not in session.'
+
+
+@app.route('/synchronize')
+def sync():
+    # user = request.args.get('user', type=str)
+    # destination = request.args.get('url', type=str)
+    lst = []
+    for player in game.players:
+        lst.append(player.name)
+    return {'players': lst}
+
+
 @app.route('/start')
 def start():
     # user = request.args.get('user', type=str)
     # destination = request.args.get('url', type=str)
-
+    for player in game.players:
+        for _ in range(5):
+            player.add_item(Item('Item test', 1, 'credit', 'unk', '9999'))
     return game.__build_pool__()
 
 

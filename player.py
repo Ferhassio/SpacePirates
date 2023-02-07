@@ -23,7 +23,9 @@ class Player:
         return f'[{self.index}]({self.turn_order}) {self.name} ' \
                f'(color:{self.current_cell_color}, cells: {self.energy_cells}, ' \
                f'credits: {self.credits}) Items: ' + items
-    #
+
+    def get_inventory(self):
+        return '\n'.join([str(item) for item in self.items])
     # def __repr__(self):
     #     return f'[#{self.index}] {self.name}'
 

@@ -68,6 +68,7 @@ class ItemPoolMaster:
 
             item_pool.extend([Item(self.TYPE_LIST.get(item_type), item_price, item_type, None, self.root_index + idx)
                               for idx in range(1, count + 1)])
+
         random.shuffle(item_pool)
 
         return item_pool

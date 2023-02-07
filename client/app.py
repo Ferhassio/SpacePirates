@@ -1,6 +1,7 @@
 import argparse
 import random
 import socket
+import time
 
 import requests
 from kivy.properties import StringProperty, Clock
@@ -30,59 +31,33 @@ Window.size = (800, 600)
 new_game = Game()
 
 global MESSAGE
+global PLAYERS
 
-
-class MoveableImage(Image):
-
-    def __init__(self, **kwargs):
-        super(MoveableImage, self).__init__(**kwargs)
-        self.x -= random.randint(1, 1000)
-        self.y -= random.randint(1, 1000)
-
-        self.x += random.randint(1, 1000)
-        self.y += random.randint(1, 1000)
-
-
-# class ServerMessage(Label):
-#     # message = StringProperty()
-#
-#     def __init__(self, **kwargs):
-#         super(ServerMessage, self).__init__(**kwargs)
-#         self.text = 'Connecting...'
-#         self.color = 'red'
-#         self.font_size = '20sp'
-#         self.pos = (300, 0)
-#         Clock.schedule_interval(self.update, 5)
-#
-#     def update(self, instance):
-#         self.text += MESSSAGE if MESSSAGE else 'Server is down.'
 
 class ServerMessage(TextInput):
     def __init__(self, **kwargs):
         super(ServerMessage, self).__init__(**kwargs)
         self.multiline = True
         self.text = 'Server messages'
-        Clock.schedule_interval(self.callback, 1)
+        Clock.schedule_interval(self.callback, .5)
 
     def callback(self, instance):
+        # print(self.text.split('\n')[-1], ' - - - ', MESSAGE)
         if self.text.split('\n')[-1] != MESSAGE:
             self.text += '\n' + MESSAGE
-            print(self.text)
-            print()
-
 
 
 class Background(BoxLayout):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        # wimg = MoveableImage(source=VORTEX_PATH)
-        img = Image(source=VORTEX_PATH)
         self.add_widget(DrawBtn())
         self.add_widget(BuildBtn())
         self.add_widget(Buy())
-        self.add_widget(img)
+        self.add_widget(Play())
         self.add_widget(ServerMessage())
 
+        self.init_pool()
+        self.load()
 
     def animate(self, instance):
         # create an animation object. This object could be stored
@@ -98,40 +73,113 @@ class Background(BoxLayout):
         # color while the mouse is down) is unchanged.
         animation.start(instance)
 
+    def load(self):
+        global MESSAGE
+        response = requests.get(f'http://{HOST}:{PORT}/synchronize')
+
+        print('Resp', response.json())
+        players = response.json()['players']
+        # self.remove_widget(Play())
+
+        for player in players:
+            print('Player', player)
+            MESSAGE += '\n' + player + ' added.'
+            self.add_widget(Ship(owner=player))
+
+    def init_pool(self):
+        global MESSAGE
+        MESSAGE += '\n' + requests.get(f'http://{HOST}:{PORT}/start').text
+        print('Pool inited', MESSAGE)
+
+
+# class Sync(Widget):
+#     def __init__(self, **kwargs):
+#         super().__init__(**kwargs)
+#
+#     def sync(self, instance):
+#         global MESSAGE
+#         response = requests.get(f'http://{HOST}:{PORT}/synchronize')
+#         MESSAGE = response.text
+#
+#         print('Resp', response.json())
+#         players = response.json()['players']
+#
+#         for player in players:
+#             print('Player', player)
+#             Ship.text = player
+#             self.add_widget(Ship())
+
+
+class Play(Widget):
+    def __init__(self, **kwargs):
+        super(Play, self).__init__(**kwargs)
+        play_btn = kb.Button(text='Start Game', size=(100, 40), pos=(300, 120))
+        play_btn.bind(on_press=self.callback)
+        self.add_widget(play_btn)
+
+    def callback(self, instance):
+        global MESSAGE
+        response = requests.get(f'http://{HOST}:{PORT}/start')
+        MESSAGE = response.text
+        self.disabled = False
+
+        # DrawBtn.disabled = False
+        # BuildBtn.disabled = False
+        # Buy.disabled = False
+
+        pop = Popup(title='Game started!', content=Image(source=PLACEHOLDER),
+                    size_hint=(None, None), size=(200, 300))
+        pop.open()
+
+
+class Ship(Widget):
+    owner = StringProperty()
+
+    def __init__(self, **kwargs):
+        super(Ship, self).__init__(**kwargs)
+        ship_obj = kb.Button(pos=(random.randint(0, 400), random.randint(120, 500)),
+                             background_normal=SHIP,
+                             background_down=SHIP,
+                             color='red',
+                             text=self.owner)
+        ship_obj.bind(on_press=self.callback)
+        self.add_widget(ship_obj)
+
+    def callback(self, instance):
+        global MESSAGE
+        response = requests.get(f'http://{HOST}:{PORT}/inventory/{self.owner}')
+        MESSAGE = f'Inventory of {self.owner} opened by {player_name}!!'
+        pop = Popup(title=f'{self.owner}`s inventory',
+                    content=TextInput(text=response.text, multiline=True),
+                    size_hint=(None, None), size=(200, 300))
+        pop.open()
+
 
 class DrawBtn(Widget):
     def __init__(self, **kwargs):
         super(DrawBtn, self).__init__(**kwargs)
-        btn = kb.Button(text='Draw', size=(100, 40), pos=(0, 120))
-        btn.bind(on_press=self.callback)
-        self.add_widget(btn)
+        draw_btn = kb.Button(text='Draw', size=(100, 40), pos=(0, 120))
+        draw_btn.bind(on_press=self.callback)
+        self.add_widget(draw_btn)
+        # self.disabled = True
 
     def callback(self, instance):
-        resp = requests.get(f'http://{HOST}:{PORT}/draw/{player_name}')
-        # c = random.randint(1, 100)
-        # player = new_game.players[0]
-        # print(player)
-        # item = new_game.draw_card(player)
-        # # print('itm', item)
-        # print(f'[{instance.state}] Draw a card "{c}"')
-        # pop = Popup(title=f'[#{item.item_id}] {item.name}', content=Image(source=VORTEX_PATH),
-        #             size_hint=(None, None), size=(200, 300))
-        # pop.open()
+        response = requests.get(f'http://{HOST}:{PORT}/draw/{player_name}')
+
         global MESSAGE
-        MESSAGE = player_name + ' got ' + resp.text
-        pop = Popup(title=resp.text, content=Image(source=VORTEX_PATH),
+        MESSAGE = player_name + ' got ' + response.text
+        pop = Popup(title=response.text, content=Image(source=VORTEX_PATH),
                     size_hint=(None, None), size=(200, 300))
         pop.open()
-
-        # print('The button %s state is <%s>' % (instance, instance.state))
 
 
 class BuildBtn(Widget):
     def __init__(self, **kwargs):
         super(BuildBtn, self).__init__(**kwargs)
-        btn1 = kb.Button(text='Charge', size=(100, 40), pos=(100, 120))
-        btn1.bind(on_press=self.callback)
-        self.add_widget(btn1)
+        build_btn = kb.Button(text='Charge', size=(100, 40), pos=(100, 120))
+        build_btn.bind(on_press=self.callback)
+        self.add_widget(build_btn)
+        # self.disabled = True
 
     def callback(self, instance):
         print('Pressed Charge', instance.state)
@@ -143,21 +191,18 @@ class Buy(Widget):
         btn1 = kb.Button(text='Buy', size=(100, 40), pos=(200, 120))
         btn1.bind(on_press=self.callback)
         self.add_widget(btn1)
+        # self.disabled = True
 
     def callback(self, instance):
-        pass
-        # player = new_game.add_player(Player('Politol', 1))
-        # new_game.__build_pool__()
-
-        # pop = Popup(title=f'Player {player.name} added!', content=Image(source=PLACEHOLDER),
-        #             size_hint=(None, None), size=(200, 300))
-        # pop.open()
+        global MESSAGE
+        MESSAGE = 'Buy prototype button'
 
 
 class SpaceApp(App):
     def build(self):
-        global MESSAGE
-        MESSAGE = requests.get(f'http://{HOST}:{PORT}/start').text
+        if not server_state:
+            Play.disabled = True
+
         return Background()
 
 
@@ -172,6 +217,7 @@ if __name__ == '__main__':
     player_name = args.pname
     HOST = args.host
     PORT = args.port
+    server_state = True
     try:
         global MESSAGE
         resp = requests.get(f'http://{HOST}:{PORT}/login/{player_name}')
@@ -180,8 +226,10 @@ if __name__ == '__main__':
             MESSAGE = resp.text
         else:
             MESSAGE = f'Request error [{resp.status_code}]. {resp.text}'
+            server_state = False
     except requests.exceptions.ConnectionError:
-        MESSAGE = 'Server is down.'
+        MESSAGE = 'Server is down'
+        server_state = False
 
     # game_session = Client(HOST, PORT, player_name)
     runTouchApp(SpaceApp().run())
