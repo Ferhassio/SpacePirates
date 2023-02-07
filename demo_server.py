@@ -25,7 +25,10 @@ def draw(user_name):
     # print('SESSION', session.players)
     # print(session.validate(user_name))
     if session.validate(user_name):
-        return str(game.draw_card(session.get_player(user_name)))
+        player = game.search_by_name(user_name)
+        card = game.draw_card(player)
+        player.add_item(card)
+        return f'{str(player.name)} got {str(card)}'
     else:
         return f'User {user_name} not in session.'
 

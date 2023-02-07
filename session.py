@@ -48,7 +48,7 @@ class Session:
         else:
             return f'Player {player_name} not in session'
 
-    def get_player(self, player_name):
+    def get_player(self, player_name) -> Player or None:
         if self.validate(player_name):
             return self.players.get(player_name)
         else:
