@@ -24,5 +24,8 @@ class Player:
                f'(color:{self.current_cell_color}, cells: {self.energy_cells}, ' \
                f'credits: {self.credits}) Items: ' + items
 
+    def __repr__(self):
+        return f'[#{self.index}] {self.name}'
+
     def __lt__(self, other):
         return self.turn_order < other.turn_order

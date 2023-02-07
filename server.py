@@ -1,7 +1,7 @@
 import socket
 from session import Session
-HOST = "localhost"
-PORT = 5557
+HOST = "0.0.0.0"
+PORT = 4004
 
 
 class Sever:
@@ -25,9 +25,12 @@ class Sever:
             client, address = self.socket.accept()
             print('Connected:', address)
             print('Connection info:', client)
-            response = self.send('Handshake from server', client)
-            self.send(self.session.add(response.decode('utf-8')), client)
-            print('Current session:', self.session)
+            response = self.send(f'[SERVER] Client {address} connected.', client)
+            print(address, response.decode('utf-8'))
+            self.session.add(response.decode('utf-8'), client)
+
+            # self.send(self.session.add(response.decode('utf-8')), client)
+            # print('Current session:', self.session)
 
     @staticmethod
     def send(data, client):
@@ -36,6 +39,35 @@ class Sever:
             return client.recv(2048 * 2)
         except socket.error as e:
             print(e)
+
+    def clientthread(self, conn, addr):
+        # sends a message to the client whose user object is conn
+        conn.send("Welcome to this chatroom!")
+
+        while True:
+            try:
+                message = conn.recv(2048)
+                if message:
+
+                    """prints the message and address of the
+                    user who just sent the message on the server
+                    terminal"""
+                    print("<" + addr[0] + "> " + message)
+
+                    # Calls broadcast function to send message to all
+                    message_to_send = "<" + addr[0] + "> " + message
+                    # broadcast(message_to_send, conn)
+                    self.se
+
+                else:
+                    """message may have no content if the connection
+                    is broken, in this case we remove the connection"""
+                    # Remove from session
+                    self.session.remove(message)
+
+            except:
+                continue
+
 
     def __del__(self):
         self.socket.close()

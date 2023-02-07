@@ -43,6 +43,8 @@ class Game:
         builder = pool_master.build_pool()
         self.game_pool.extend(builder)
 
+        return f'Game started. Pool generated. Total:{len(self.game_pool)}'
+
     def _check_robot_draw(self):
         if self.robot_meet == self.total_players:
             self.robot_meet = 0
@@ -124,7 +126,7 @@ class Game:
 
         return cell
 
-    def turn(self, player: Player) -> None:
+    def turn(self, player: Player) -> str:
         """
         Make a full turn
         :param player: Player object
@@ -133,6 +135,7 @@ class Game:
 
         # Draw a card
         item = self.draw_card(player)
+        state = ''
         if item:
             # check various item types
             if item.type == 'robot':
@@ -153,20 +156,18 @@ class Game:
                     # Drop player color if run out of cells
                     if player.energy_cells == 0:
                         player.current_cell_color = None
-                        print(f'Oooops, {player.name} got ROBOT booom. Now he can charge any color. '
-                              f'Draw {len(self.robot_draw)}')
+                        state = f'Oooops, {player.name} got ROBOT booom. Now he can charge any color. Draw {len(self.robot_draw)}'
                         # print(' '.join([str(itm) for itm in self.robot_draw]))
 
                     else:
-                        print(f'Oooops, {player.name} got ROBOT booom. '
-                              f'Draw {len(self.robot_draw)}')
+                        state = f'Oooops, {player.name} got ROBOT booom. Draw {len(self.robot_draw)}'
                         # print(' '.join([str(itm) for itm in self.robot_draw]))
 
                 # 3 turn protection
                 elif player.is_protected:
-                    print(f'Wow!!! shield saved {player.name} from {item.name}!!!')
+                    state = f'Wow!!! shield saved {player.name} from {item.name}!!!'
                 else:
-                    print(f'Ahahaha {player.name} died from {item.name}!!! God bye. Draw {len(self.robot_draw)}')
+                    state = f'Ahahaha {player.name} died from {item.name}!!! God bye. Draw {len(self.robot_draw)}'
                     # print(' '.join([str(itm) for itm in self.robot_draw]))
 
                     # Wipe player
@@ -176,7 +177,7 @@ class Game:
                 self._check_robot_draw()
 
             elif item.type == 'pirate':
-                print(f'Oooops, {player.name} got PIRATE booom. Draw {len(self.pirate_draw)}')
+                state = f'Oooops, {player.name} got PIRATE booom. Draw {len(self.pirate_draw)}'
                 self.pirate_draw.append(item)
                 self.deal_with_pirate(player)
 
@@ -193,7 +194,7 @@ class Game:
                 # If cell is player color, turn again
                 if player.current_cell_color == item.color:
                     player.turn_no += 1
-                    print(f'{player.name} got HIS cell color. And draw again...')
+                    state = f'{player.name} got HIS cell color. And draw again...'
                     self.turn(player)
                 elif player.turn_no == 2:
                     player.is_turned = True
@@ -209,6 +210,8 @@ class Game:
                 else:
                     player.turn_no += 1
                     self.turn(player)
+
+        return state
 
     def _remove_credits(self, player: Player, count) -> list[Item]:
         """
